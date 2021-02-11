@@ -23,6 +23,10 @@ def clean_reg_time(date_and_time)
   hour =  DateTime.strptime(date_and_time, '%m/%d/%Y %H:%M').hour
 end
 
+def clean_reg_days(date_and_time)
+  day =  DateTime.strptime(date_and_time, '%m/%d/%Y %H:%M').wday
+end
+
 def legislators_by_zipcode(zip)
   civic_info = Google::Apis::CivicinfoV2::CivicInfoService.new
   civic_info.key = 'AIzaSyClRzDqDh5MsXwnCWi0kOiiBivP6JsSyBw'
@@ -60,11 +64,13 @@ template_letter = File.read('form_letter.erb')
 erb_template = ERB.new template_letter
 
 registration_hours = []
+registration_days = []
 
 contents.each do |row|
   id = row[0]
   name = row[:first_name]
   registration_hours.push(clean_reg_time(row[:regdate]))
+  registration_days.push(clean_reg_days(row[:regdate]))
   phone_number = clean_phone_number(row[:homephone])
   zipcode = clean_zipcode(row[:zipcode])
   legislators = legislators_by_zipcode(zipcode)
@@ -74,12 +80,37 @@ contents.each do |row|
   save_thank_you_letter(id,form_letter)
 end
 
-def get_best_hours(registration_hours)
-  best_hours = registration_hours.uniq
-                    .map { |e| [e, registration_hours.count(e)]}
+def get_mode(array)
+  mode = array.uniq
+                    .map { |e| [e, array.count(e)]}
                     .sort_by {|_,cnt| -cnt}
-  best_hours = best_hours.take_while {|_,cnt| cnt == best_hours.first.last}
+  mode = mode.take_while {|_,cnt| cnt == mode.first.last}
    .map(&:first)
 end
 
-puts "The best hours are #{get_best_hours(registration_hours)}"
+def convert_week_day(arr)
+  b = []
+  arr.each do |e|
+    case e
+    when 0
+      b.push("Sunday")
+    when 1
+      b.push("Monday")
+    when 2
+      b.push("Tuesday")
+    when 3
+      b.push("Wednesday")
+    when 4
+      b.push("Thursday")
+    when 5
+      b.push("Friday")
+    when 6
+      b.push("Saturday")
+    end
+  end
+  return b.join('')
+end
+
+puts "The best hours are #{get_mode(registration_hours)}"
+p registration_days
+puts "The best day(s) of the week is/are #{convert_week_day(get_mode(registration_days))}"
